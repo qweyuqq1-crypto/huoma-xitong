@@ -1,0 +1,6 @@
+{
+  "name": "十夜活码系统",
+  "description": "An advanced WeChat-optimized live QR code routing and domain protection system featuring high-concurrency Redis-like caching, automatic group switching, customer service rotation, geo-location routing, and multi-domain pool failovers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

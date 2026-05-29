@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # PRIMARY BUSINESS DATABASE
+  # ==========================================
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: campaign-postgres
+    environment:
+      POSTGRES_USER: campaign_admin
+      POSTGRES_PASSWORD: campaign_db_password_sec
+      POSTGRES_DB: campaign_tenant_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-schema.sql:/docker-entrypoint-initdb.d/postgres-schema.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campaign_admin -d campaign_tenant_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # REDIS HIGH PERFORMANCE CACHING SYSTEM (SENTINEL CLUSTER)
+  # ==========================================
+  
+  # Redis HA Master Node
+  redis-master:
+    image: redis:7-alpine
+    container_name: redis-ha-master
+    command: redis-server --protected-mode no
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Redis HA Replica/Slave Node
+  redis-replica:
+    image: redis:7-alpine
+    container_name: redis-ha-replica
+    command: redis-server --replicaof redis-master 6379 --protected-mode no
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Redis Sentinel Node (Dynamic Outage Check & Target Swap Trigger)
+  redis-sentinel:
+    image: redis:7-alpine
+    container_name: redis-ha-sentinel
+    command: >
+      sh -c "echo 'port 26379' > /etc/redis-sentinel.conf &&
+             echo 'sentinel monitor mymaster redis-master 6379 2' >> /etc/redis-sentinel.conf &&
+             echo 'sentinel down-after-milliseconds mymaster 5000' >> /etc/redis-sentinel.conf &&
+             echo 'sentinel failover-timeout mymaster 60000' >> /etc/redis-sentinel.conf &&
+             echo 'sentinel parallel-syncs mymaster 1' >> /etc/redis-sentinel.conf &&
+             redis-server /etc/redis-sentinel.conf --sentinel"
+    ports:
+      - "26379:26379"
+    depends_on:
+      redis-master:
+        condition: service_healthy
+      redis-replica:
+        condition: service_started
+    restart: unless-stopped
+
+  # ==========================================
+  # BUSINESS FULL-STACK APPLICATION INSTANCE
+  # ==========================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wechat-livecode-core
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - GEMINI_API_KEY=dummy_placeholder
+      - DATABASE_URL=postgresql://campaign_admin:campaign_db_password_sec@postgres_db:5432/campaign_tenant_db
+      - REDIS_SENTINEL_HOSTS=redis-sentinel:26379
+      - REDIS_SENTINEL_NAME=mymaster
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+      redis-sentinel:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local
