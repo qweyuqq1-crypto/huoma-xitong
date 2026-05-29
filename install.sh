@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # ==============================================================================
-#  活码分发系统 - 一键安装与部署脚本 (Linux Build)
+#  活码智能分发溯源系统 - 一键安装与部署脚本 (Linux Build)
+#  GitHub Repository: qweyuqq1-crypto/huoma-xitong
 # ==============================================================================
 
 # 颜色定义
@@ -33,7 +34,40 @@ else
     PM="unknown"
 fi
 
-# 2. 检测 Node.js 环境
+# 2. 自动化克隆逻辑 (支持一键远程脚本直接运行)
+if [ ! -f "package.json" ] || ! grep -q '"name": "react-example"' package.json 2>/dev/null; then
+    echo -e "${YELLOW}🔍 检测到当前未在项目目录内，准备为您自动下载并安装 [qweyuqq1-crypto/huoma-xitong]...${NC}"
+    
+    # 检测并安装 git
+    if ! command -v git &> /dev/null; then
+        echo -e "${YELLOW}正在安装 git 传输工具...${NC}"
+        if [ "$PM" = "apt-get" ]; then
+            apt-get update -y && apt-get install -y git
+        elif [ "$PM" = "yum" ]; then
+            yum install -y git
+        else
+            echo -e "${RED}❌ 无法识别的包管理器，自动安装 git 失败。请先手动执行：apt/yum install git${NC}"
+            exit 1
+        fi
+    fi
+
+    # 清理并克隆
+    if [ -d "huoma-xitong" ]; then
+        echo -e "${YELLOW}检测到同名目录 huoma-xitong，正在将其备份...${NC}"
+        mv huoma-xitong "huoma-xitong_bak_$(date +%s)"
+    fi
+
+    echo -e "${BLUE}正在克隆 GitHub 仓库: https://github.com/qweyuqq1-crypto/huoma-xitong.git...${NC}"
+    git clone https://github.com/qweyuqq1-crypto/huoma-xitong.git
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ 克隆 GitHub 仓库失败。请检查服务器网络并确保仓库公开可读。${NC}"
+        exit 1
+    fi
+
+    cd huoma-xitong || exit 1
+fi
+
+# 3. 检测 Node.js 环境
 echo -e "\n${BLUE}[1/5] 正在检测 Node.js 运行环境...${NC}"
 if ! command -v node &> /dev/null; then
     echo -e "${YELLOW}未检测到 Node.js，正在自动为您安装最佳版本 (Node.js LTS)...${NC}"
@@ -53,26 +87,25 @@ else
     echo -e "${GREEN}✓ 已检测到 Node.js 版本: ${NODE_VERSION}${NC}"
 fi
 
-# 3. 检测并全局安装 PM2 进程守护程序
+# 4. 检测并全局安装 PM2 进程守护程序
 echo -e "\n${BLUE}[2/5] 正在配置后台守护管理工具 (PM2)...${NC}"
 if ! command -v pm2 &> /dev/null; then
-    echo -e "${YELLOW}正在全局安装 PM2...${NC}"
+    echo -e "${YELLOW}正在全局安装 PM2 守护管理器...${NC}"
     npm install -g pm2 --registry=https://registry.npmmirror.com
 else
     echo -e "${GREEN}✓ 已检测到 PM2 进程管理器。${NC}"
 fi
 
-# 4. 安装项目依赖
-echo -e "\n${BLUE}[3/5] 正在安装生产环境依赖项...${NC}"
+# 5. 安装项目依赖
+echo -e "\n${BLUE}[3/5] 正在配置国内镜安装生产环境依赖项...${NC}"
 if [ -f "package.json" ]; then
     npm install --registry=https://registry.npmmirror.com
 else
-    echo -e "${RED}❌ 错误: 未能在当前目录找到 package.json 文件。${NC}"
-    echo -e "${YELLOW}请确保您是在克隆后的项目根目录下运行此脚本。${NC}"
+    echo -e "${RED}❌ 错误: 发生未预期错误，未能找到 package.json 文件。${NC}"
     exit 1
 fi
 
-# 5. 编译并打包项目
+# 6. 编译并打包项目
 echo -e "\n${BLUE}[4/5] 正在编译前端与合并生产后端 CJS 包...${NC}"
 npm run build
 if [ $? -ne 0 ]; then
@@ -81,7 +114,7 @@ if [ $? -ne 0 ]; then
 fi
 echo -e "${GREEN}✓ 编译成功！代码已预编译至 dist/ 目录。${NC}"
 
-# 6. 配置运行与开机自启
+# 7. 配置运行与开机自启
 echo -e "\n${BLUE}[5/5] 启动并设置自愈后台运行守护...${NC}"
 # 删除历史同名服务
 pm2 delete "qr-system" &> /dev/null
@@ -89,17 +122,18 @@ pm2 delete "qr-system" &> /dev/null
 # 启动 PM2 服务
 pm2 start dist/server.cjs --name "qr-system" --env NODE_ENV=production
 
-# 保存状态
+# 保存状态以支持开机自启动
 pm2 save
 
 echo -e "\n${CYAN}================================================================${NC}"
 echo -e "${GREEN}      🎉 恭喜！活码智能分发溯源系统已一键部署成功！🎉       ${NC}"
 echo -e "${CYAN}================================================================${NC}"
-echo -e "  📌  ${BOLD}服务状态：${NC} 运行中 (PM2 守护)"
-echo -e "  🌐  ${BOLD}访问端口：${NC} http://你的服务器IP:3000"
-echo -e "  🔧  ${BOLD}运维指令：${NC}"
-echo -e "      - ${YELLOW}查看实时运行日志：${NC} pm2 logs qr-system"
-echo -e "      - ${YELLOW}查看服务运行状态：${NC} pm2 status"
-echo -e "      - ${YELLOW}重启系统服务：${NC}     pm2 restart qr-system"
-echo -e "      - ${YELLOW}停止服务进程：${NC}     pm2 stop qr-system"
+echo -e "  📌  服务状态：运行中 (PM2 守护进程模式 - 异常自动重启)"
+echo -e "  🌐  访问端口：http://你的服务器IP:3000"
+echo -e "  🔧  服务管理与运维指令："
+echo -e "      - ${YELLOW}查看运行日志：${NC} pm2 logs qr-system"
+echo -e "      - ${YELLOW}查看实时状态：${NC} pm2 status"
+echo -e "      - ${YELLOW}启动/重启服务：${NC}pm2 start/restart qr-system"
+echo -e "      - ${YELLOW}关闭后台服务：${NC} pm2 stop qr-system"
 echo -e "${CYAN}================================================================${NC}"
+echo -e "${GREEN}现在可以通过浏览器访问 http://您的服务器IP:3000 试用您的系统。${NC}"
