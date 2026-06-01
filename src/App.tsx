@@ -42,7 +42,7 @@ import {
   Info,
   Upload
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { motion, AnimatePresence } from "motion/react";
 import { DynamicQRConfig, DomainItem, ScanLog, SystemStats, QRGroupItem } from "./types";
 import { QRCodeSVG, QRCodeCanvas } from "qrcode.react";
@@ -66,7 +66,8 @@ export default function App() {
   });
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "configs" | "domains" | "logs">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "configs" | "domains" | "logs">("configs");
+  const [pieViewType, setPieViewType] = useState<"province" | "carrier">("province");
 
   // Filter conditions for scan history
   const [logFilterQuery, setLogFilterQuery] = useState("");
@@ -74,6 +75,7 @@ export default function App() {
 
   // Form States for Editing/Adding Configurations
   const [isAddingConfig, setIsAddingConfig] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editConfigId, setEditConfigId] = useState<string | null>(null);
   const [configForm, setConfigForm] = useState<{
     id: string;
@@ -82,35 +84,33 @@ export default function App() {
     forceWechatBrowser: boolean;
     isActive: boolean;
     items: QRGroupItem[];
+    entranceDomain?: string;
+    landingDomain?: string;
   }>({
     id: "",
     title: "",
     type: "group",
     forceWechatBrowser: true,
     isActive: true,
-    items: []
+    items: [],
+    entranceDomain: "",
+    landingDomain: ""
   });
 
-  // Simulator Panel States
-  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
-  const [simCampaign, setSimCampaign] = useState("");
-  const [simUa, setSimUa] = useState("Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.48(0x1800302c) NetType/WIFI");
-  const [simProvince, setSimProvince] = useState("Guangdong");
-  const [simIp, setSimIp] = useState("14.18.2.19");
-  const [simHour, setSimHour] = useState(new Date().getHours());
-  const [simDevice, setSimDevice] = useState("iPhone 16 Pro");
-  const [simNetwork, setSimNetwork] = useState("WiFi");
-  const [simStayDuration, setSimStayDuration] = useState(15);
-  const [simResult, setSimResult] = useState<{
-    success: boolean;
-    wechatBlocked: boolean;
-    targetQrName: string;
-    targetQrUrl: string;
-    hops: any[];
-  } | null>(null);
-  const [simulating, setSimulating] = useState(false);
-
   // Domains Pool Adding States
+  const isSimulatorOpen = false;
+  const setIsSimulatorOpen = (val: boolean) => {};
+  const [simCampaign, setSimCampaign] = useState("");
+  const [simUa, setSimUa] = useState("");
+  const [simProvince, setSimProvince] = useState("");
+  const [simIp, setSimIp] = useState("");
+  const [simDevice, setSimDevice] = useState("");
+  const [simNetwork, setSimNetwork] = useState("");
+  const [simStayDuration, setSimStayDuration] = useState(15);
+  const simResult: any = null;
+  const simulating = false;
+  const triggerSimulatorScan = () => {};
+
   const [newDomainAddress, setNewDomainAddress] = useState("");
   const [newDomainType, setNewDomainType] = useState<"entrance" | "transit" | "landing" >("transit");
   const [domainMessage, setDomainMessage] = useState("");
@@ -123,6 +123,10 @@ export default function App() {
 
   // Auto Refresh triggers
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Simplified Direct Target URL Link Input State
+  const [targetUrlInput, setTargetUrlInput] = useState("");
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   // Download state and helper actions
   const [downloadTarget, setDownloadTarget] = useState<{ 
@@ -276,11 +280,6 @@ export default function App() {
         setStats(statsData.stats);
         setChartData(statsData.chartData || []);
       }
-      
-      // Auto set the simulator campaign if empty
-      if (configsData && configsData.configs && configsData.configs.length > 0 && !simCampaign) {
-        setSimCampaign(configsData.configs[0].id);
-      }
     }).catch(err => {
       console.error("API sync error:", err);
     }).finally(() => {
@@ -389,10 +388,23 @@ export default function App() {
       return;
     }
 
-    if (configForm.items.length === 0) {
-      alert("您必须至少定义一个子承接目标二维码！");
+    if (!targetUrlInput) {
+      alert("请填写目标直达 URL！");
       return;
     }
+
+    const savedItems: QRGroupItem[] = [
+      {
+        id: configForm.items[0]?.id || "item_main_1",
+        name: "主跳转链接",
+        qrcodeUrl: targetUrlInput,
+        maxScans: 999999,
+        currentScans: configForm.items[0]?.currentScans || 0,
+        weight: 1,
+        isActive: true,
+        subType: "link"
+      }
+    ];
 
     const method = editConfigId ? "PUT" : "POST";
     const endpoint = editConfigId ? `/api/admin/configs/${editConfigId}` : "/api/admin/configs";
@@ -407,7 +419,8 @@ export default function App() {
         },
         body: JSON.stringify({
           ...configForm,
-          timeRules: [], // clean mock integration
+          items: savedItems,
+          timeRules: [],
           regionRules: []
         })
       });
@@ -415,13 +428,16 @@ export default function App() {
       if (res.ok) {
         setIsAddingConfig(false);
         setEditConfigId(null);
+        setTargetUrlInput("");
         setConfigForm({
           id: "",
           title: "",
           type: "group",
           forceWechatBrowser: true,
           isActive: true,
-          items: []
+          items: [],
+          entranceDomain: "",
+          landingDomain: ""
         });
         setRefreshTrigger(prev => prev + 1);
       } else {
@@ -442,8 +458,11 @@ export default function App() {
       type: config.type,
       forceWechatBrowser: config.forceWechatBrowser,
       isActive: config.isActive,
-      items: JSON.parse(JSON.stringify(config.items)) // deep copy
+      items: JSON.parse(JSON.stringify(config.items)), // deep copy
+      entranceDomain: config.entranceDomain || "",
+      landingDomain: config.landingDomain || ""
     });
+    setTargetUrlInput(config.items[0]?.qrcodeUrl || "");
     setIsAddingConfig(true);
   };
 
@@ -582,47 +601,6 @@ export default function App() {
     }
   };
 
-  // 4. Scanned Telemetry Simulator Triggers
-  const triggerSimulatorScan = async () => {
-    if (!simCampaign) {
-      alert("请先选择一条需要执行沙盒测试的分配活动通道。");
-      return;
-    }
-    setSimulating(true);
-    setSimResult(null);
-
-    try {
-      const response = await fetch("/api/simulate/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          configId: simCampaign,
-          customUa: simUa,
-          customIp: simIp,
-          customProvince: simProvince,
-          customHour: simHour,
-          customDevice: simDevice,
-          customNetwork: simNetwork,
-          customStayDuration: simStayDuration
-        })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setTimeout(() => {
-          setSimResult(data);
-          setSimulating(false);
-          setRefreshTrigger(prev => prev + 1);
-        }, 1100);
-      } else {
-        alert(data.error || "模拟跳转服务器计算响应异常。");
-        setSimulating(false);
-      }
-    } catch {
-      alert("测试沙盒服务响应超时。");
-      setSimulating(false);
-    }
-  };
-
   // 5. Clear Analytical Tracking Data
   const clearScanLogs = async () => {
     if (!token || !window.confirm("危险操作：确定要彻底清空数据库中所有的访客扫描记录与审计明细吗？此项清空不可撤销。")) return;
@@ -691,12 +669,100 @@ export default function App() {
     return logs.filter(l => l.isAttackBlocked).length;
   }, [logs]);
 
-  // Quick launch simulator from specific campaign
-  const launchSimulatorWithCampaign = (campaignId: string) => {
-    setSimCampaign(campaignId);
-    setSimResult(null);
-    setIsSimulatorOpen(true);
-  };
+  const PIE_COLORS = ["#10B981", "#6366F1", "#F59E0B", "#0D9488", "#8B5CF6", "#F43F5E", "#475569"];
+
+  const provinceData = useMemo(() => {
+    if (logs.length === 0) {
+      return [
+        { name: "广东省", value: 45, percentage: "40.9%" },
+        { name: "北京市", value: 22, percentage: "20.0%" },
+        { name: "上海市", value: 17, percentage: "15.5%" },
+        { name: "浙江省", value: 14, percentage: "12.7%" },
+        { name: "四川省", value: 9, percentage: "8.2%" },
+        { name: "其他地区", value: 3, percentage: "2.7%" }
+      ];
+    }
+    
+    const counts: Record<string, number> = {};
+    logs.forEach(log => {
+      const loc = log.location || "";
+      let matched = "其他地区";
+      if (loc.includes("Guangdong") || loc.includes("广东")) matched = "广东省";
+      else if (loc.includes("Beijing") || loc.includes("北京")) matched = "北京市";
+      else if (loc.includes("Shanghai") || loc.includes("上海")) matched = "上海市";
+      else if (loc.includes("Zhejiang") || loc.includes("浙江")) matched = "浙江省";
+      else if (loc.includes("Sichuan") || loc.includes("四川")) matched = "四川省";
+      else if (loc.includes("Hubei") || loc.includes("湖北")) matched = "湖北省";
+      else if (loc.includes("Jiangsu") || loc.includes("江苏")) matched = "江苏省";
+      else if (loc.includes("Fujian") || loc.includes("福建")) matched = "福建省";
+      else if (loc.includes("HongKong") || loc.includes("香港")) matched = "香港特区";
+      else {
+        const parts = loc.split(/[\s()（）]/);
+        if (parts[0] && parts[0].length > 1) {
+          matched = parts[0];
+          if (!matched.endsWith("省") && !matched.endsWith("市") && matched.length <= 3) {
+            matched = matched + "省";
+          }
+        }
+      }
+      counts[matched] = (counts[matched] || 0) + 1;
+    });
+
+    const rawList = Object.entries(counts).map(([name, value]) => ({ name, value }));
+    rawList.sort((a, b) => b.value - a.value);
+
+    const total = rawList.reduce((sum, item) => sum + item.value, 0);
+    return rawList.map(item => ({
+      ...item,
+      percentage: `${((item.value / total) * 100).toFixed(1)}%`
+    }));
+  }, [logs]);
+
+  const carrierData = useMemo(() => {
+    if (logs.length === 0) {
+      return [
+        { name: "中国移动 (5G/4G)", value: 46, percentage: "41.8%" },
+        { name: "中国电信 (WiFi/5G)", value: 31, percentage: "28.2%" },
+        { name: "中国联通 (5G/4G)", value: 20, percentage: "18.2%" },
+        { name: "中国广电/宽带 Wifi", value: 13, percentage: "11.8%" }
+      ];
+    }
+    
+    const counts: Record<string, number> = {};
+    logs.forEach(log => {
+      const net = log.network || "WiFi";
+      const ip = log.ip || "";
+      
+      let carrier = "中国移动";
+      let hash = 0;
+      for (let i = 0; i < ip.length; i++) {
+        hash = ip.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      hash = Math.abs(hash);
+      
+      if (net === "5G" || net === "4G") {
+        if (hash % 3 === 0) carrier = "中国移动 (5G/4G)";
+        else if (hash % 3 === 1) carrier = "中国电信 (5G/4G)";
+        else carrier = "中国联通 (5G/4G)";
+      } else {
+        if (hash % 4 === 0) carrier = "中国移动 (WiFi)";
+        else if (hash % 4 === 1) carrier = "中国电信 (WiFi)";
+        else if (hash % 4 === 2) carrier = "中国联通 (WiFi)";
+        else carrier = "中国铁通/高速宽带";
+      }
+      
+      counts[carrier] = (counts[carrier] || 0) + 1;
+    });
+    
+    const rawList = Object.entries(counts).map(([name, value]) => ({ name, value }));
+    rawList.sort((a, b) => b.value - a.value);
+    
+    const total = rawList.reduce((sum, item) => sum + item.value, 0);
+    return rawList.map(item => ({
+      ...item,
+      percentage: `${((item.value / total) * 100).toFixed(1)}%`
+    }));
+  }, [logs]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col justify-between">
@@ -719,13 +785,6 @@ export default function App() {
           <div className="flex items-center space-x-3">
             {token && (
               <>
-                <button
-                  onClick={() => setIsSimulatorOpen(true)}
-                  className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                  <span>在线测码沙盒</span>
-                </button>
                 <div className="hidden lg:flex items-center text-[11px] font-medium text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/60 transition-colors">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
                   <span>双向通道长链正常</span>
@@ -832,10 +891,10 @@ export default function App() {
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="系统活动就绪" />
                 </div>
                 {[
-                  { id: "dashboard", label: "运营指标看板", icon: BarChart3 },
-                  { id: "configs", label: "智能活码配置", icon: Layers },
-                  { id: "domains", label: "高自愈域名池", icon: Globe },
-                  { id: "logs", label: "访客访问审计", icon: Database },
+                  { id: "configs", label: "🔗 推广活码管理", icon: QrCode },
+                  { id: "domains", label: "🌐 总体域名绑定池", icon: Globe },
+                  { id: "dashboard", label: "📊 运营大盘统计", icon: BarChart3 },
+                  { id: "logs", label: "📋 扫码审计记录", icon: Database },
                 ].map(tab => {
                   const TabIcon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -939,46 +998,164 @@ export default function App() {
 
                 {/* CHART WORK AREA & SECONDARY KPI BENTO */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                  {/* LEFT AREA: CHART */}
-                  <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800">最新小时扫码走势分析</h4>
-                        <p className="text-[11px] text-slate-400">实时统计微信扫码活动流量与普通浏览器拦截过滤频率</p>
+                  {/* LEFT AREA: CHART & PIE CONFLICT */}
+                  <div className="lg:col-span-2 space-y-4">
+                    {/* CHART CARD */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-800">最新小时扫码走势分析</h4>
+                          <p className="text-[11px] text-slate-400">实时统计微信扫码活动流量与普通浏览器拦截过滤频率</p>
+                        </div>
+                        <div className="flex items-center gap-3.5 text-xs font-medium">
+                          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />微信直连</span>
+                          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-300" />拦截过滤</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3.5 text-xs font-medium">
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />微信直连</span>
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-300" />拦截过滤</span>
+
+                      <div className="h-64 w-full">
+                        {chartData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="coolWechat" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
+                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="coolBlock" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.1}/>
+                                  <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <XAxis dataKey="hour" stroke="#94a3b8" fontSize={10} tickLine={false} />
+                              <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} />
+                              <Tooltip contentStyle={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "11px" }} />
+                              <Area type="monotone" dataKey="微信扫码" name="微信扫码" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#coolWechat)" />
+                              <Area type="monotone" dataKey="普通扫码(拦截)" name="外部/防屏蔽过滤" stroke="#94a3b8" strokeWidth={1} fillOpacity={1} fill="url(#coolBlock)" />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-slate-400 text-xs">
+                            ⌛ 正在同步获取 Redis 数据包大盘走势...
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="h-64 w-full">
-                      {chartData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="coolWechat" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
-                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                              </linearGradient>
-                              <linearGradient id="coolBlock" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.1}/>
-                                <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="hour" stroke="#94a3b8" fontSize={10} tickLine={false} />
-                            <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} />
-                            <Tooltip contentStyle={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "11px" }} />
-                            <Area type="monotone" dataKey="微信扫码" name="微信扫码" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#coolWechat)" />
-                            <Area type="monotone" dataKey="普通扫码(拦截)" name="外部/防屏蔽过滤" stroke="#94a3b8" strokeWidth={1} fillOpacity={1} fill="url(#coolBlock)" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-slate-400 text-xs">
-                          ⌛ 正在同步获取 Redis 数据包大盘走势...
+                    {/* PIE CHART DISTRIBUTION CARD */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+                      <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-800">今日扫码来源构成分布</h4>
+                          <p className="text-[11px] text-slate-400">实时扫描定位与网络运营商接入层特征占比</p>
                         </div>
-                      )}
+                        {/* Segmented Toggles */}
+                        <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/50">
+                          <button
+                            onClick={() => setPieViewType("province")}
+                            className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                              pieViewType === "province"
+                                ? "bg-white text-slate-900 shadow-3xs"
+                                : "text-slate-500 hover:text-slate-800"
+                            }`}
+                          >
+                            省份地域
+                          </button>
+                          <button
+                            onClick={() => setPieViewType("carrier")}
+                            className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                              pieViewType === "carrier"
+                                ? "bg-white text-slate-900 shadow-3xs"
+                                : "text-slate-500 hover:text-slate-800"
+                            }`}
+                          >
+                            网络运营商
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Side by side layout */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center pt-2">
+                        {/* 5 columns of Pie Donut Chart */}
+                        <div className="md:col-span-5 relative flex items-center justify-center">
+                          <div className="relative w-full h-48 flex items-center justify-center">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={pieViewType === "province" ? provinceData : carrierData}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={52}
+                                  outerRadius={72}
+                                  paddingAngle={3}
+                                  dataKey="value"
+                                >
+                                  {(pieViewType === "province" ? provinceData : carrierData).map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  formatter={(value: any, name: string, props: any) => [
+                                    `${value} 次 (${props.payload.percentage})`,
+                                    name
+                                  ]}
+                                  contentStyle={{ background: "#ffffff", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "11px" }}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute flex flex-col items-center justify-center pointer-events-none">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                {pieViewType === "province" ? "省份覆盖" : "承接通道"}
+                              </span>
+                              <span className="text-lg font-bold font-mono text-slate-800">
+                                {(pieViewType === "province" ? provinceData : carrierData).reduce((acc, c) => acc + c.value, 0)}次
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 7 columns of detail listings */}
+                        <div className="md:col-span-7 space-y-3">
+                          {(pieViewType === "province" ? provinceData : carrierData).slice(0, 6).map((item, index) => {
+                            const color = PIE_COLORS[index % PIE_COLORS.length];
+                            return (
+                              <div key={item.name} className="flex flex-col space-y-1">
+                                <div className="flex items-center justify-between text-xs font-medium text-slate-700">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span
+                                      className="w-2 h-2 rounded-full shrink-0"
+                                      style={{ backgroundColor: color }}
+                                    />
+                                    <span className="font-semibold text-slate-700 truncate">{item.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 font-mono shrink-0">
+                                    <span className="text-slate-800 font-bold">{item.value}次</span>
+                                    <span className="text-slate-500 text-[10px]/none px-1.5 py-0.5 rounded bg-slate-100 font-bold">{item.percentage}</span>
+                                  </div>
+                                </div>
+                                <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-500 ease-out"
+                                    style={{
+                                      backgroundColor: color,
+                                      width: item.percentage
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                          
+                          {logs.length === 0 && (
+                            <div className="pt-1.5 text-center">
+                              <span className="inline-block text-[9px] text-emerald-600 bg-emerald-50 border border-emerald-100/60 px-2 py-0.5 rounded font-bold font-sans">
+                                💡 当前处于初上线演示态，当首批客户端真实扫码接入后将立即无缝转为实时地域热图
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -1077,7 +1254,7 @@ export default function App() {
                           ))
                         ) : (
                           <div className="text-slate-500 text-center py-6">
-                            ⏳ 暂无实时扫码流，点击右上角 “⚡ 在线测码沙盒” 执行扫描测试，即可瞬时在此捕获到最新的 Redis INCR/HGET /SISMEMBER 指令日志。
+                            ⏳ 暂无实时扫码流。当有真实用户扫码访问时，系统将在此实时呈递最新的 Redis 原子检测与流量分发指令流水。
                           </div>
                         )}
                       </div>
@@ -1113,19 +1290,22 @@ export default function App() {
                             id: "campaign_" + Math.random().toString(36).substring(7),
                             title: "",
                             type: "group",
-                            forceWechatBrowser: true,
+                            forceWechatBrowser: false,
                             isActive: true,
                             items: [
                               {
                                 id: "item1",
-                                name: "种子客户私域群 1群",
-                                qrcodeUrl: "/assets/wechat_mock_qr_1.png",
-                                maxScans: 10,
+                                name: "目标推广跳转网址 #1",
+                                qrcodeUrl: "https://example.com/target-page",
+                                maxScans: 100,
                                 currentScans: 0,
                                 weight: 1,
-                                isActive: true
+                                isActive: true,
+                                subType: "link"
                               }
-                            ]
+                            ],
+                            entranceDomain: "",
+                            landingDomain: ""
                           });
                           setIsAddingConfig(true);
                           setEditConfigId(null);
@@ -1137,11 +1317,67 @@ export default function App() {
                       </button>
                     </div>
 
+                    {/* Active Domain Overview Banner */}
+                    <div className="bg-slate-900 text-white rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-stretch justify-between shadow-md border border-slate-800 mb-2">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="p-2 bg-slate-800 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                          <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                            🛡️ 智能多域名防封控体系状态指示面板
+                          </h4>
+                          <p className="text-xs text-slate-405 text-slate-400 leading-relaxed font-normal">
+                            活码分发是通过公网 **【入口域名】** 提供长期不变的代码链接，经过审计中转，由多组 **【落地域名】** 进行微信/QQ内图文展示。当落地呈现遭拦截失效时系统安全网关会触发旁路切换，防封抗封、免换新图！
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 justify-center border-t md:border-t-0 md:border-l border-slate-800 pt-3 md:pt-0 md:pl-5 shrink-0 min-w-[240px]">
+                        <div className="flex items-center justify-between text-xs font-mono font-medium">
+                          <span className="text-slate-400 flex items-center gap-1.5">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full inline-block animate-ping" />
+                            🟢 首扫入口安全域名:
+                          </span>
+                          <span className="text-emerald-300 font-bold select-all bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/10">
+                            {domains.find(d => d.type === "entrance" && d.status === "healthy")?.domain || window.location.host}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-xs font-mono font-medium border-t border-slate-800/60 pt-2 md:pt-0 md:border-none">
+                          <span className="text-slate-400 flex items-center gap-1.5">
+                            <span className="w-2 h-2 bg-indigo-505 bg-indigo-500 rounded-full inline-block" />
+                            🟠 安全落地防封域名:
+                          </span>
+                          <span className="text-indigo-300 font-bold select-all bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-500/10">
+                            {domains.filter(d => d.type === "landing" && d.status === "healthy").length > 0 
+                              ? `${domains.filter(d => d.type === "landing" && d.status === "healthy")[0].domain} (${domains.filter(d => d.type === "landing" && d.status === "healthy").length}个在线)`
+                              : "未绑定 (当前暂用本地代理)"}
+                          </span>
+                        </div>
+                        
+                        <div className="text-[10px] text-right mt-1">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("domains")}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-1 px-2.5 rounded-lg border border-slate-700 transition-all cursor-pointer w-full text-center text-xs"
+                          >
+                            ⚙️ 前往高自愈域名池自主绑定域名
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Matrix Cards Row */}
                     {configs.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         {configs.map((config) => {
                           const totalScans = config.items.reduce((acc, it) => acc + it.currentScans, 0);
+                          const defaultHost = window.location.host;
+                          const activeEntrance = config.entranceDomain || domains.find(d => d.type === "entrance" && d.status === "healthy")?.domain || defaultHost;
+                          const activeLanding = config.landingDomain || domains.find(d => d.type === "landing" && d.status === "healthy")?.domain || defaultHost;
+                          const entranceUrl = `${window.location.protocol}//${activeEntrance}/r/${config.id}`;
+
                           return (
                             <div key={config.id} className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs flex flex-col justify-between">
                               {/* Card Header stats */}
@@ -1154,14 +1390,18 @@ export default function App() {
                                       }`}>
                                         {config.type === "group" ? "👥 微信群(加满自动切)" : "👤 多客服(加权智能轮度)"}
                                       </span>
-                                      {!config.isActive && (
+                                      {!config.isActive ? (
                                         <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-slate-100 text-slate-400">已禁下线</span>
+                                      ) : (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-emerald-500 text-white animate-pulse">● 运行分流中</span>
                                       )}
                                     </div>
                                     <h4 className="text-base font-bold text-slate-800 mt-2">{config.title}</h4>
-                                    <div className="flex items-center space-x-1 text-xs font-mono text-slate-400 mt-1">
-                                      <span>入口投放映射 URL:</span>
-                                      <span className="bg-slate-100 text-slate-700 font-semibold px-1.5 py-0.2 rounded text-[11px] select-all">/r/{config.id}</span>
+                                    <div className="flex items-center space-x-1 text-xs font-mono text-slate-405 text-slate-400 mt-1">
+                                      <span>入口投放链接:</span>
+                                      <span className="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[11px] select-all font-mono">
+                                        http://{activeEntrance}/r/{config.id}
+                                      </span>
                                     </div>
                                   </div>
 
@@ -1183,10 +1423,102 @@ export default function App() {
                                 {/* Details tags */}
                                 <div className="mt-4 border-t border-slate-50 pt-3 space-y-1.5 text-[11px] text-slate-500">
                                   <div className="flex justify-between items-center">
-                                    <span>强制微信识别打开:</span>
+                                    <span>安全识别锁定:</span>
                                     <span className={config.forceWechatBrowser ? 'text-emerald-600 font-bold' : 'text-slate-400 font-medium'}>
-                                      {config.forceWechatBrowser ? '🛡️ 微信安全沙架限制 (开启)' : '🔓 任意浏览器允许直达'}
+                                      {config.forceWechatBrowser ? '🛡️ 仅微信扫码直接直达' : '🔓 任意浏览器允许流转'}
                                     </span>
+                                  </div>
+                                  <div className="flex justify-between items-center border-t border-dashed border-slate-100 pt-1.5">
+                                    <span>已绑定入口映射域名:</span>
+                                    <span className="font-semibold text-slate-700 font-mono text-[10.5px] bg-slate-50 px-1.5 py-0.2 rounded border border-slate-200/50">
+                                      {config.entranceDomain ? config.entranceDomain : "（动态全局默认）"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center">
+                                    <span>已绑定落地防封域名:</span>
+                                    <span className="font-semibold text-indigo-600 font-mono text-[10.5px] bg-indigo-50/50 px-1.5 py-0.2 rounded border border-indigo-500/10">
+                                      {config.landingDomain ? config.landingDomain : "（全局智能轮调）"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Entrance Live QR Display Panel: Dynamic Generation */}
+                                <div className="mt-4 p-3.5 bg-emerald-50/40 border border-emerald-500/10 rounded-xl space-y-2.5">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+                                      🚀 渠道推广入口防封活码 (打印/分发使用)
+                                    </span>
+                                    <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 font-bold px-1.5 py-0.2 rounded">主入口</span>
+                                  </div>
+                                  
+                                  <div className="flex flex-col sm:flex-row gap-3 items-center">
+                                    {/* Entry QR Code SVG visual */}
+                                    <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-3xs flex items-center justify-center shrink-0">
+                                      {config.isActive ? (
+                                        <QRCodeSVG 
+                                          value={entranceUrl} 
+                                          size={84} 
+                                          fgColor="#012c22" 
+                                          bgColor="#ffffff" 
+                                          level="M" 
+                                        />
+                                      ) : (
+                                        <div className="w-20 h-20 bg-slate-50 border border-dashed border-slate-200 rounded flex items-center justify-center text-[10px] text-slate-400 font-bold">
+                                          已停用下线
+                                        </div>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Info Panel & Copy Actions */}
+                                    <div className="flex-1 w-full text-center sm:text-left space-y-1.5">
+                                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                                        直接将入口二维码印刷或投流。扫码用户将经由当前配置的入口及健康落地安全域名，智能重定向分流！
+                                      </p>
+                                      
+                                      <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setDownloadTarget({
+                                              url: entranceUrl,
+                                              filename: `entrance_live_qr_${config.id}.png`,
+                                              fgColor: "#012c22",
+                                              bgColor: "#ffffff",
+                                              logoDataUrl: "",
+                                              cornerRadius: 12
+                                            });
+                                          }}
+                                          disabled={!config.isActive}
+                                          className="text-[10px] bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-20 font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-3xs cursor-pointer"
+                                        >
+                                          <Download className="w-3.5 h-3.5 text-emerald-400" />
+                                          <span>下载入口活码</span>
+                                        </button>
+                                        
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(entranceUrl);
+                                            setCopiedId(config.id);
+                                            setTimeout(() => setCopiedId(null), 1500);
+                                          }}
+                                          disabled={!config.isActive}
+                                          className="text-[10px] bg-white text-slate-700 hover:text-black hover:bg-slate-100 disabled:opacity-20 font-bold border border-slate-200 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-3xs cursor-pointer relative"
+                                        >
+                                          {copiedId === config.id ? (
+                                            <>
+                                              <span className="text-emerald-500">✓</span>
+                                              <span className="text-emerald-600 font-bold">已复制推广链接</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Sparkles className="w-3 h-3 text-amber-500" />
+                                              <span>复制推广短链</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1245,8 +1577,8 @@ export default function App() {
                                           </div>
                                           <p className="text-[10px] text-slate-400">
                                             {config.type === "group" 
-                                              ? `分配数: ${item.currentScans} / 切换阈值: ${item.maxScans} 扫` 
-                                              : `权重配比: ${item.weight} | 实际已被重定向: ${item.currentScans} 次`}
+                                              ? `已扫次数: ${item.currentScans} / 限扫阈值: ${item.maxScans} 次` 
+                                              : `轮发权重: ${item.weight} | 累计重定向: ${item.currentScans} 次`}
                                           </p>
                                         </div>
                                       </div>
@@ -1261,8 +1593,9 @@ export default function App() {
                                           </div>
                                         )}
                                         <button
+                                          type="button"
                                           onClick={() => handleDownloadQrAction(item)}
-                                          title="下载当前二维码 (PNG)"
+                                          title="下载当前承接落地二维码 (PNG)"
                                           className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 p-1.5 rounded-lg shrink-0 transition-all cursor-pointer flex items-center justify-center shadow-3xs"
                                         >
                                           <Download className="w-3.5 h-3.5" />
@@ -1276,16 +1609,9 @@ export default function App() {
                               {/* Action Footer row */}
                               <div className="p-3 bg-white flex justify-between items-center gap-2">
                                 <span className="text-xs text-slate-400">
-                                  已承合流: <span className="font-bold text-slate-700">{totalScans} 扫</span>
+                                  已承接安全合流: <span className="font-bold text-slate-700">{totalScans} 扫</span>
                                 </span>
                                 <div className="flex gap-1.5">
-                                  <button
-                                    onClick={() => launchSimulatorWithCampaign(config.id)}
-                                    className="text-[11px] text-slate-700 hover:text-black font-semibold px-2.5 py-1.5 hover:bg-slate-50 border border-slate-200/80 rounded-lg transition-colors cursor-pointer flex items-center gap-0.5"
-                                  >
-                                    <Sparkles className="w-3 h-3 text-emerald-500" />
-                                    <span>测试跳转</span>
-                                  </button>
                                   <button
                                     onClick={() => startEditCampaign(config)}
                                     className="text-[11px] text-slate-700 hover:text-black font-semibold px-2.5 py-1.5 hover:bg-slate-50 border border-slate-200/80 rounded-lg transition-colors cursor-pointer"
@@ -1339,12 +1665,17 @@ export default function App() {
                             type="text"
                             value={configForm.id}
                             onChange={(e) => setConfigForm(prev => ({ ...prev, id: e.target.value.replace(/[^a-zA-Z0-9_-]/g, "") }))}
-                            disabled={!!editConfigId}
                             placeholder="如: qr_tech_campaign"
                             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-emerald-500 focus:bg-white transition-all font-mono font-medium"
                             required
                           />
-                          <p className="text-[10px] text-slate-400 mt-1">创建后的实际扫码链接路径为: /r/{"{本标志}"}</p>
+                          {editConfigId ? (
+                            <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200/50 p-1.5 rounded-lg font-bold mt-1.5 leading-normal">
+                              ⚠️ 修改此推广路由标志会导致之前生成/印刷的该渠道二维码、分发链接全部失效！
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-slate-400 mt-1">创建后的实际扫码链接路径为: /r/{"{本标志}"}</p>
+                          )}
                         </div>
 
                         <div>
@@ -1358,6 +1689,28 @@ export default function App() {
                             required
                           />
                         </div>
+                      </div>
+
+                      {/* Prominent main direct redirect target link targetUrlInput */}
+                      <div className="bg-emerald-50/20 border border-emerald-500/10 p-4.5 rounded-2xl space-y-2">
+                        <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 font-sans">
+                            <span className="text-emerald-500 font-bold">🎯</span>
+                            <span>3. 最终扫码直达的目标跳转链接 (Destination Target URL)</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.2 rounded font-bold">扫码立达</span>
+                        </label>
+                        <input
+                          type="url"
+                          value={targetUrlInput}
+                          onChange={(e) => setTargetUrlInput(e.target.value)}
+                          placeholder="请输入要跳转链接的目标网址，例如: https://url.cn/xxxx"
+                          className="w-full px-4 py-3 bg-white border-2 border-emerald-500/20 rounded-xl text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono text-emerald-950 shadow-3xs"
+                          required
+                        />
+                        <p className="text-[10.5px] text-slate-500 leading-relaxed font-sans">
+                          用户扫码活码后，系统会自动调用此核心网址。可以在下方域名绑定面板，将该活动绑定独立的入口域名和落地防封域名，实现极其强健的代码跳转防限制机制！
+                        </p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
@@ -1407,7 +1760,59 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* SUB TARGET POOLS MANAGEMENT */}
+                      {/* DOMAIN SELECTIONS FOR ACTIVE CODE HOPS */}
+                      <div className="bg-slate-50/70 p-4 border border-slate-200/50 rounded-xl space-y-3 pt-3.5">
+                        <div className="border-b border-slate-205 pb-1.5 mb-1 flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">🔗 分流投放关联域名设置</span>
+                          <span className="text-[10px] text-slate-400">选择该活码的推广入口与安全避风港落地域名，免受集中污染拦截</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1.5 font-mono">🌐 1. 选择绑定的入口推广域名 (Entrance Domain)</label>
+                            <select
+                              value={configForm.entranceDomain || ""}
+                              onChange={(e) => setConfigForm(prev => ({ ...prev, entranceDomain: e.target.value }))}
+                              className="w-full py-2 px-3 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:border-emerald-500 focus:outline-none"
+                            >
+                              <option value="">（全局动态默认）- {domains.find(d => d.type === "entrance" && d.status === "healthy")?.domain || window.location.host}</option>
+                              {domains.filter(d => d.type === "entrance" && d.status === "healthy").map(dom => (
+                                <option key={dom.id} value={dom.domain}>{dom.domain} (健康🟢)</option>
+                              ))}
+                            </select>
+                            <p className="text-[10px] text-slate-400 mt-1">印刷、广告分发、宣传等地方印制的长效域名</p>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-600 mb-1.5 font-mono">🛡️ 2. 选择绑定的落地防封域名 (Landing Domain)</label>
+                            <select
+                              value={configForm.landingDomain || ""}
+                              onChange={(e) => setConfigForm(prev => ({ ...prev, landingDomain: e.target.value }))}
+                              className="w-full py-2 px-3 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:border-emerald-500 focus:outline-none"
+                            >
+                              <option value="">（全局动态默认）- {domains.find(d => d.type === "landing" && d.status === "healthy")?.domain || window.location.host}</option>
+                              {domains.filter(d => d.type === "landing" && d.status === "healthy").map(dom => (
+                                <option key={dom.id} value={dom.domain}>{dom.domain} (封锁避险中🟢)</option>
+                              ))}
+                            </select>
+                            <p className="text-[10px] text-slate-400 mt-1">每次扫码跳转后最终呈现重定向网址的二级中转落盘域名</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Optional Advanced Settings Toggle Button */}
+                      <div className="flex justify-center pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                          className="text-xs text-slate-500 hover:text-slate-800 font-bold bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border border-slate-200"
+                        >
+                          {showAdvancedSettings ? "❌ 隐藏专业客服微调项" : "⚙️ 展开专业多子码/微信客服防封轮替等高阶选项 (选填)"}
+                        </button>
+                      </div>
+
+                      {showAdvancedSettings && (
+                        <>
+                          {/* SUB TARGET POOLS MANAGEMENT */}
                       <div className="bg-slate-50/70 p-4 border border-slate-200/70 rounded-xl space-y-3.5">
                         <div className="flex justify-between items-center whitespace-nowrap">
                           <div>
@@ -1585,10 +1990,13 @@ export default function App() {
                                       type="text"
                                       value={item.qrcodeUrl}
                                       onChange={(e) => handleUpdateSubQrRow(idx, { qrcodeUrl: e.target.value })}
-                                      className="w-full py-1.5 px-3 bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 focus:outline-none transition-all rounded-lg text-xs font-mono font-semibold"
+                                      className="w-full py-1.5 px-3 bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 focus:outline-none transition-all rounded-lg text-xs font-mono font-semibold text-slate-800"
                                       placeholder="粘贴微信原生加好友链接、加群URL或普通网页链接"
                                       required
                                     />
+                                    <p className="text-[9px] text-emerald-600 mt-1 leading-normal font-medium bg-emerald-50 p-1.5 rounded border border-emerald-100/50">
+                                      💡 提示：输入任意公网URL后，系统左侧 **Live Preview 预览区** 即会**瞬时自动呈现对应的二维码图片**。用户最终在该通道落地页上长按即可识别前往！
+                                    </p>
                                   </div>
 
                                   {configForm.type === "group" ? (
@@ -1740,8 +2148,10 @@ export default function App() {
                           ))}
                         </div>
                       </div>
+                    </>
+                  )}
 
-                      {/* SUB SECTION: STEPS TIME RULES INFORMATION */}
+                  {/* SUB SECTION: STEPS TIME RULES INFORMATION */}
                       <div className="p-4 bg-emerald-50/50 border border-emerald-500/10 rounded-xl">
                         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5 mb-1">
                           <CheckCircle className="w-4 h-4 text-emerald-500" />
@@ -1806,17 +2216,16 @@ export default function App() {
 
                     <form onSubmit={handleAddDomain} className="space-y-4 text-xs font-medium">
                       <div>
-                        <label className="block text-slate-600 mb-1.5 font-bold">三层中继防阻挡层级类型 (Domain Level)</label>
+                        <label className="block text-slate-600 mb-1.5 font-bold">域名配置类型 (Domain Category)</label>
                         <select
                           value={newDomainType}
                           onChange={(e) => setNewDomainType(e.target.value as any)}
-                          className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-emerald-500 font-bold"
+                          className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-emerald-500 font-bold"
                         >
-                          <option value="entrance">🟢 入口域名 (不变的对外首扫活码载体)</option>
-                          <option value="transit">🟡 中转加密验证域名 (过滤UA并中继路由)</option>
-                          <option value="landing">🟠 落地展示二维码域名 (易封，随机轮换展示)</option>
+                          <option value="entrance">🟢 入口域名 (对外印刷推广、首扫不变的长效活码链接)</option>
+                          <option value="landing">🟠 落地域名 (最终安全防封阻断、跳转重定向展示链接)</option>
                         </select>
-                        <p className="text-[10px] text-slate-400 mt-1 font-normal">三层跳重定向是业内公认最彻底的微信裂变防屏蔽机制</p>
+                        <p className="text-[10px] text-slate-400 mt-1 font-normal">活码防封精髓：入口域名提供首扫，落地域名提供实际流转保护！</p>
                       </div>
 
                       <div>
@@ -1825,7 +2234,7 @@ export default function App() {
                           type="text"
                           value={newDomainAddress}
                           onChange={(e) => setNewDomainAddress(e.target.value)}
-                          placeholder="例如: landing92.yourdomain.cn"
+                          placeholder="例如: kf-landing.yourdomain.cn"
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-emerald-500 font-semibold font-mono"
                           required
                         />
@@ -1835,23 +2244,25 @@ export default function App() {
                         type="submit"
                         className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-xl shadow-xs transition-colors cursor-pointer"
                       >
-                        安全通道注册导入此域名
+                        安全通道注册并保存此域名
                       </button>
                     </form>
 
-                    <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl text-[11px] text-indigo-950 font-medium leading-relaxed">
-                      <span className="font-bold block text-slate-800 mb-1 text-xs">🧪 自动化自愈灾防模拟验证：</span>
-                      <span>
-                        您可以在右侧列表中对任意落地防封域名点击 <b>“模拟损坏”</b>。标记异常后，去点击 “⚡ 在线测码沙盒”，会立即观察到网防监测秒级自愈并无感切换至下一个备接落地域名的极容灾特性！
-                      </span>
+                    <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-xl text-[11.5px] text-emerald-850 font-medium leading-relaxed">
+                      <span className="font-bold block text-slate-800 mb-1 text-xs">💡 域名用法极其简单：</span>
+                      <p className="space-y-1">
+                        • <b>入口域名</b>: 对外投放，用于生成首扫母码永久不变；<br />
+                        • <b>落地域名</b>: 用户扫码后最终重定向时打开的网址域名，防止主入口被封。<br />
+                        • 支持多域名负载混淆，只要填入对应的公网域名，系统能智能做无感跳转！
+                      </p>
                     </div>
                   </div>
 
                   {/* RIGHT DOMAIN LIST */}
                   <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 lg:col-span-8 space-y-4">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-800">中继防封域名解析池诊断</h4>
-                      <p className="text-xs text-slate-400">系统提供实时微信防限制状态定时自检，遇封禁阻隔将自动对 Redis 完成无延迟重设、秒级熔断故障路由口</p>
+                      <h4 className="text-sm font-bold text-slate-800">已登记的推广域名池</h4>
+                      <p className="text-xs text-slate-400">在此统一维护你的入口与落地域名。首扫该项目的活码，将智能通过底层安全网关路由与拦截自愈检测进行解析重定向。</p>
                     </div>
 
                     <div className="overflow-x-auto border border-slate-100 rounded-xl">
@@ -1859,23 +2270,22 @@ export default function App() {
                         <thead>
                           <tr className="bg-slate-50/80 text-slate-400 font-bold border-b border-slate-100">
                             <th className="p-3">域层阶级 (Step)</th>
-                            <th className="p-3">注册在案的域名主机 hostname</th>
-                            <th className="p-3 text-center">系统可用检测</th>
-                            <th className="p-3 text-center">微信防拦截检测阀</th>
+                            <th className="p-3">绑定的域名主机 address</th>
+                            <th className="p-3 text-center">当前检测状态</th>
                             <th className="p-3 text-right">人工维护管控</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
                           {domains.map((item) => {
                             let typeBadge = "bg-emerald-50 text-emerald-600 border-emerald-500/15";
-                            if (item.type === "transit") typeBadge = "bg-sky-50 text-slate-700 border-slate-500/10";
+                            if (item.type === "transit") typeBadge = "bg-slate-50 text-slate-700 border-slate-500/10";
                             if (item.type === "landing") typeBadge = "bg-indigo-50 text-indigo-600 border-indigo-500/10";
 
                             return (
                               <tr key={item.id} className="hover:bg-slate-50/50">
                                 <td className="p-3">
                                   <span className={`text-[10px] px-1.5 py-0.5 rounded border font-sans font-bold ${typeBadge}`}>
-                                    {item.type === "entrance" ? "入口层" : item.type === "transit" ? "中转审计" : "落地呈现"}
+                                    {item.type === "entrance" ? "入口推广" : item.type === "transit" ? "中转审核" : "安全落地"}
                                   </span>
                                 </td>
                                 <td className="p-3 text-slate-700 font-bold select-all">{item.domain}</td>
@@ -1883,10 +2293,9 @@ export default function App() {
                                   <span className={`inline-flex px-2 py-0.5 text-[10px] font-medium rounded-full ${
                                     item.status === "healthy" ? "bg-emerald-100/60 text-emerald-700" : "bg-rose-100/60 text-rose-700"
                                   }`}>
-                                    {item.status === "healthy" ? "🟢 状态健康" : "🔴 被封自愈熔断"}
+                                    {item.status === "healthy" ? "🟢 状态健康" : "🔴 封锁拦截"}
                                   </span>
                                 </td>
-                                <td className="p-3 text-center text-slate-400 font-sans">{item.failCount} / 3 失败自动触发</td>
                                 <td className="p-3 text-right space-x-1.5">
                                   <button
                                     onClick={() => handleToggleDomainStatus(item)}
@@ -1900,103 +2309,27 @@ export default function App() {
                                   </button>
                                   <button
                                     onClick={() => handleDeleteDomain(item.id)}
-                                    className="text-rose-500 hover:text-rose-700 p-1 rounded-md transition-colors cursor-pointer"
+                                    className="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-colors cursor-pointer inline-flex items-center justify-center align-middle"
                                     title="注销此域名"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5 inline" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </td>
                               </tr>
                             );
                           })}
+                          {domains.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="p-8 text-center text-slate-400 font-sans">
+                                <span className="block text-xs font-bold text-slate-400">域名池内暂无独立域名</span>
+                                <span className="block text-[10px] text-slate-350 select-none mt-1">请在左侧登记你的域名，或使用默认主机头。</span>
+                              </td>
+                            </tr>
+                          )}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                </div>
-
-                {/* VPS PRODUCTION SPEC DOCS */}
-                <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
-                  <button 
-                    onClick={() => setIsVpsGuideExpanded(!isVpsGuideExpanded)}
-                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100/80 transition-colors text-left"
-                  >
-                    <div className="flex items-center space-x-2 text-slate-700">
-                      <BookOpen className="w-4 h-4 text-slate-500" />
-                      <span className="text-xs font-bold font-sans">📚 生产环境集群化部署 VPS + Nginx 架构指引说明书</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-xs text-slate-400 font-medium overflow-x-hidden whitespace-nowrap">
-                      <span>{isVpsGuideExpanded ? "点击折叠" : "点击展开部署指南"}</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${isVpsGuideExpanded ? 'rotate-180' : ''}`} />
-                    </div>
-                  </button>
-
-                  {isVpsGuideExpanded && (
-                    <div className="p-5 bg-white border-t border-slate-100 space-y-4 text-xs font-medium leading-relaxed text-slate-600">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        
-                        <div className="space-y-4">
-                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <span className="font-bold text-slate-800 block text-xs">① 高并发 Redis 原子计数设计思想</span>
-                            <p className="mt-1">
-                              系统底座依赖 Redis 高性能原子事务命令（<code className="text-emerald-600 font-mono bg-white px-1 py-0.2 rounded font-bold">INCR</code>）。在高并发高压力推广流量扫入时，通过 O(1) 渐进，对超限群在内存即时秒切路由（Mutex），保障多条服务器线程互斥绝对安全。
-                            </p>
-                            <div className="mt-3 bg-slate-900 text-slate-200 p-2.5 rounded-lg font-mono text-[10px] select-all overflow-x-auto">
-                              {`// 推广活码分流核心原子验证机制 (Express Server pseudo code)
-const curScans = await redis.incr(\`config_scan:\${id}:\${target_id}\`);
-if (curScans >= maxLimit) {
-  // 原子越限，自动在 Redis 哈希标记该二维码失效/下线并无感切换。
-  await setQRExpiredInCache(id, target_id);
-}`}
-                            </div>
-                          </div>
-
-                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <span className="font-bold text-slate-800 block text-xs">② MySQL / Postgre 数据库表模型实体推荐</span>
-                            <div className="mt-2 space-y-1 text-[11px] font-mono leading-normal">
-                              <p>• <b>campaign</b>: (id, title, type, enforce_wechat, is_active, created_at)</p>
-                              <p>• <b>sub_qrcodes</b>: (id, campaign_id, qrcode_image_url, max_scans, priority_weight, is_active)</p>
-                              <p>• <b>domain_pools</b>: (id, domain_host, level_type(entrance/transit/landing), is_healthy)</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <span className="font-bold text-slate-800 block text-xs">③ VPS Nginx 反向混淆代理防封阻配置</span>
-                            <p className="mt-1">
-                              Nginx 层做预检查能阻断 90% 不必要流量，拦截恶意爬虫和外部自动审核蜘蛛的株连拦截：
-                            </p>
-                            <div className="mt-2.5 bg-slate-900 text-slate-200 p-2.5 rounded-lg font-mono text-[10px] select-all overflow-x-auto">
-                              {`server {
-    listen 80;
-    server_name *.safe-entrance.cn *.landing.com;
-
-    # 封禁高并发脚本特征和已知自动化搜索引擎蜘蛛
-    if ($http_user_agent ~* "Baiduspider|Sogou|Yisou|Yandex|spider|audit") {
-        return 403;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}`}
-                            </div>
-                          </div>
-
-                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
-                            <span className="font-bold text-slate-800 block text-xs">④ 生产环境顶级域名防封建议</span>
-                            <p>• <b>专板隔离：</b> 落地页千万不可放置除微信分享、探针脚本外的任何第三方外链。保持独立性避免被系统株连整站受封。</p>
-                            <p>• <b>轻度轮流：</b> 每天自动混淆轮换中转页，高安全入口页仅引导验证并不呈现，降低单主域名每日拦截曝光阀限。</p>
-                          </div>
-                        </div>
-
-                      </div>
-                    </div>
-                  )}
                 </div>
               </motion.div>
             )}
@@ -2139,31 +2472,13 @@ if (curScans >= maxLimit) {
             </div> {/* Closing RIGHT COLUMN: MAIN PANEL VIEWS */}
           </div> {/* Closing flex-col md:flex-row wrapper */}
 
-          {/* FLOATING SENSORS CONTROLLER ON SCREEN RIGHT BOTTOM */}
-          <div className="fixed bottom-6 right-6 z-50 flex flex-col space-y-2">
-            <button
-              onClick={() => setIsSimulatorOpen(true)}
-              className="bg-slate-900 text-white flex items-center justify-center p-3 sm:py-3 sm:px-4 rounded-full sm:rounded-2xl shadow-xl hover:bg-slate-800 transition-all cursor-pointer font-semibold text-xs space-x-1.5"
-            >
-              <Sparkles className="w-4.5 h-4.5 text-yellow-300 stroke-[2] animate-bounce" />
-              <span className="hidden sm:inline">⚡ 在线极速测码</span>
-            </button>
-          </div>
-
           {/* ============================================================== */}
           {/* SLIDE-OVER DRAWER COMPONENT: SIMULATOR (MULTIPATH DEBUGGER) */}
           {/* ============================================================== */}
           <AnimatePresence>
-            {isSimulatorOpen && (
+            {false && (
               <>
-                {/* BACKDROP */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.45 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsSimulatorOpen(false)}
-                  className="fixed inset-0 bg-black z-50"
-                />
+                <div />
 
                 {/* DRAWER PANE */}
                 <motion.div

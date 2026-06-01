@@ -124,160 +124,15 @@ function getMockQRCodeUrl(title: string, subName: string, color: string = "#07C1
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 }
 
-const DEFAULT_CONFIGS: DynamicQRConfig[] = [
-  {
-    id: "summer_group",
-    title: "2026夏日私域运营裂变群",
-    type: "group",
-    forceWechatBrowser: true,
-    isActive: true,
-    createdAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
-    items: [
-      {
-        id: "sg_item1",
-        name: "裂变体验1群 (满10人换)",
-        qrcodeUrl: getMockQRCodeUrl("2026夏日裂变", "体验1群", "#07C160"),
-        maxScans: 10,
-        currentScans: 8,
-        weight: 1,
-        isActive: true,
-      },
-      {
-        id: "sg_item2",
-        name: "裂变备用2群 (满10人换)",
-        qrcodeUrl: getMockQRCodeUrl("2026夏日裂变", "备用2群", "#3182CE"),
-        maxScans: 10,
-        currentScans: 0,
-        weight: 1,
-        isActive: true,
-      },
-      {
-        id: "sg_item3",
-        name: "裂变终极3群 (长期开放)",
-        qrcodeUrl: getMockQRCodeUrl("2026夏日裂变", "玩家大本营", "#D69E2E"),
-        maxScans: 100,
-        currentScans: 0,
-        weight: 1,
-        isActive: true,
-      }
-    ],
-    timeRules: [],
-    regionRules: []
-  },
-  {
-    id: "vip_support",
-    title: "高端VIP客服多坐席智能轮询",
-    type: "service",
-    forceWechatBrowser: false,
-    isActive: true,
-    createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-    items: [
-      {
-        id: "vs_item1",
-        name: "专属顾问-林经理 (权重5)",
-        qrcodeUrl: getMockQRCodeUrl("VIP客服小林", "华南区核心负责", "#07C160"),
-        maxScans: 9999,
-        currentScans: 43,
-        weight: 5,
-        isActive: true,
-      },
-      {
-        id: "vs_item2",
-        name: "高级助理-陈老师 (权重3)",
-        qrcodeUrl: getMockQRCodeUrl("VIP客服小陈", "华北区业务助理", "#805AD5"),
-        maxScans: 9999,
-        currentScans: 25,
-        weight: 3,
-        isActive: true,
-      },
-      {
-        id: "vs_item3",
-        name: "华东顾问-安娜 (权重2 - 支持深夜分流)",
-        qrcodeUrl: getMockQRCodeUrl("VIP客服安娜", "全能型夜班顾问", "#DD6B20"),
-        maxScans: 9999,
-        currentScans: 14,
-        weight: 2,
-        isActive: true,
-      }
-    ],
-    timeRules: [
-      { id: "tr1", startTime: "00:00", endTime: "08:00", redirectTarget: "vs_item3" }
-    ],
-    regionRules: [
-      { id: "rr1", province: "Guangdong", redirectTarget: "vs_item1" },
-      { id: "rr2", province: "Beijing", redirectTarget: "vs_item2" }
-    ]
-  }
-];
+const DEFAULT_CONFIGS: DynamicQRConfig[] = [];
 
-const DEFAULT_LOGS: ScanLog[] = [
-  {
-    id: "log1",
-    configId: "summer_group",
-    configTitle: "2026夏日私域运营裂变群",
-    targetQrName: "裂变体验1群 (满10人换)",
-    targetQrUrl: "",
-    timestamp: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
-    isWechat: true,
-    ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.48(0x1800302c) NetType/WIFI Language/zh_CN",
-    ip: "113.108.19.24",
-    location: "Guangdong (广州)",
-    referer: "https://mp.weixin.qq.com/",
-    step: "landing",
-    domainUsed: "landing-page-a19.tencent-safe.com"
-  },
-  {
-    id: "log2",
-    configId: "summer_group",
-    configTitle: "2026夏日私域运营裂变群",
-    targetQrName: "裂变体验1群 (满10人换)",
-    targetQrUrl: "",
-    timestamp: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-    isWechat: true,
-    ua: "Mozilla/5.0 (Linux; Android 14; NE2210 Build/UKQ1.230917.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/116.0.0.0 Mobile Safari/537.36 MMWEBID/5713 MicroMessenger/8.0.47.2560(0x28002F3A) NetType/WIFI",
-    ip: "101.4.136.22",
-    location: "Beijing (北京)",
-    referer: "https://mp.weixin.qq.com/s/article123",
-    step: "landing",
-    domainUsed: "landing-page-a19.tencent-safe.com"
-  },
-  {
-    id: "log3",
-    configId: "vip_support",
-    configTitle: "高端VIP客服多坐席智能轮询",
-    targetQrName: "高级助理-陈老师 (权重3)",
-    targetQrUrl: "",
-    timestamp: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
-    isWechat: false,
-    ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    ip: "202.104.136.22",
-    location: "Shanghai (上海)",
-    referer: "https://google.com",
-    step: "landing",
-    domainUsed: "landing-page-b72.tencent-safe.com"
-  },
-  {
-    id: "log4",
-    configId: "vip_support",
-    configTitle: "高端VIP客服多坐席智能轮询",
-    targetQrName: "专属顾问-林经理 (权重5)",
-    targetQrUrl: "",
-    timestamp: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
-    isWechat: true,
-    ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.48",
-    ip: "14.18.2.19",
-    location: "Guangdong (深圳)",
-    referer: "https://mp.weixin.qq.com/s/ad",
-    step: "landing",
-    domainUsed: "landing-page-c08.tencent-safe.com"
-  }
-];
+const DEFAULT_LOGS: ScanLog[] = [];
 
 const DEFAULT_STATS: SystemStats = {
-  totalScans: 82,
-  wechatScans: 68,
-  nonWechatScans: 14,
-  failoversCount: 3
+  totalScans: 0,
+  wechatScans: 0,
+  nonWechatScans: 0,
+  failoversCount: 0
 };
 
 // Quick Sync Persistent File Helper
@@ -674,281 +529,9 @@ function selectQRTarget(config: DynamicQRConfig, reqData: { ip: string, referer:
 // BUSINESS TELEMETRY ROUTER & REAL LIVE WEB ENGINE
 // ==========================================
 
-// Simulator API Router -- returns complete hops details for UI representation
+// Simulator API Router -- deactive in clean system
 app.post("/api/simulate/scan", (req, res) => {
-  const { configId, customUa, customIp, customProvince, customHour } = req.body;
-  const db = readDb();
-  
-  const config = db.configs.find(c => c.id === configId);
-  if (!config) {
-    return res.status(404).json({ error: "Dynamic link configuration matching this ID went missing" });
-  }
-
-  if (!config.isActive) {
-    return res.status(400).json({ error: "This live code configuration is currently disabled!" });
-  }
-
-  const ip = customIp || "14.18.2.19";
-  const ua = customUa || "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1) MicroMessenger/8.0.48";
-  const isWechat = ua.toLowerCase().includes("micromessenger");
-
-  // 1. FREQUENCY RATE LIMITING: Check if IP is blacklisted in Redis pool, or scanned within 5 seconds
-  if (redis.sismember("blacklist:ips", ip)) {
-    return res.status(429).json({
-      success: false,
-      rateLimited: true,
-      error: "⚠️ [IP BLOCKED] Your IP address has been banned by Redis Sentinel due to scan frequency exceeding limits (5s limit).",
-      hops: [{
-        step: "security_shield",
-        domain: "firewall.sec.wechat.cn",
-        action: "Redis SISMEMBER Blacklist Audit check.",
-        status: "blocked",
-        message: `🚫 IP ${ip} resides in Redis Blacklist. Request dropped instantly at edge gateway.`
-      }]
-    });
-  }
-
-  const now = Date.now();
-  if (lastScanTimes[ip] && (now - lastScanTimes[ip] < 5000)) {
-    // Add to Redis blacklist set (Automatic Ban!)
-    redis.sadd("blacklist:ips", ip);
-    return res.status(429).json({
-      success: false,
-      rateLimited: true,
-      error: "⚠️ [SPAM ALERT] Scan velocity too high from same IP address! Automatically added to Redis Blacklist.",
-      hops: [{
-        step: "security_shield",
-        domain: "firewall.sec.wechat.cn",
-        action: "Rate limits triggered (Scan twice inside 5 seconds).",
-        status: "blocked",
-        message: `🚨 IP ${ip} detected spamming. SADD blacklist:ips ${ip} executed. Blocking subsequent entries.`
-      }]
-    });
-  }
-  // Record latest successful trace time
-  lastScanTimes[ip] = now;
-
-  // Garbage Collection for in-memory tracker to prevent memory growth leaks (keep memory heap efficient)
-  if (Math.random() < 0.1) {
-    for (const key in lastScanTimes) {
-      if (now - lastScanTimes[key] > 15000) {
-        delete lastScanTimes[key];
-      }
-    }
-  }
-
-  // Telemetry chain logs
-  const hopsLog: any[] = [];
-
-  // Step 1: Entrance Check
-  const entranceDomains = db.domains.filter(d => d.type === "entrance" && d.status === "healthy");
-  const selectedEntrance = entranceDomains.length > 0 ? entranceDomains[0].domain : "entrance-default.com";
-  
-  hopsLog.push({
-    step: "entrance",
-    domain: selectedEntrance,
-    action: "Scan QR of dynamic entrance url, checking browser compatibility (User-Agent Filter).",
-    status: isWechat || !config.forceWechatBrowser ? "ok" : "blocked",
-    message: isWechat 
-      ? "User Agent contains 'MicroMessenger': Authorised WeChat browser access." 
-      : config.forceWechatBrowser 
-        ? "Access Refused: Non-WeChat browser environment flagged. Malicious scanners or search crawlers filtered." 
-        : "Unrestricted navigation allowed. Bypassing WeChat user-agent lock rule."
-  });
-
-  if (config.forceWechatBrowser && !isWechat) {
-    db.stats.totalScans += 1;
-    db.stats.nonWechatScans += 1;
-    
-    const logItem = {
-      id: "log_" + Date.now() + "_" + Math.floor(Math.random()*1000),
-      configId: config.id,
-      configTitle: config.title,
-      targetQrName: "Blocked (Non-WeChat UA)",
-      targetQrUrl: "",
-      timestamp: new Date().toISOString(),
-      ua,
-      isWechat: false,
-      ip,
-      location: getGeolocation(ip),
-      device: getDeviceModel(ua),
-      network: getNetworkType(ua),
-      referer: "https://qr.weixin.qq.com/",
-      step: "entrance",
-      domainUsed: selectedEntrance,
-      isAttackBlocked: true
-    };
-    
-    // Put into High-Performance Queue instead of blocking
-    analyticsQueue.enqueue({ type: 'log', data: logItem });
-    writeDb(db); // Update stats instantly
-    return res.json({ success: false, wechatBlocked: true, hops: hopsLog });
-  }
-
-  // Step 2: Transit Hop
-  let transitDomains = db.domains.filter(d => d.type === "transit" && d.status === "healthy");
-  if (transitDomains.length === 0) {
-    transitDomains = [ { id: "t_def", domain: "transit-default-cdn.net", type: "transit", status: "healthy", failCount: 0 } ];
-  }
-  const selectedTransit = transitDomains[Math.floor(Math.random() * transitDomains.length)].domain;
-
-  hopsLog.push({
-    step: "transit",
-    domain: selectedTransit,
-    action: "Entrance Domain redirects to High-Availability Transit CDN Domain to encrypt direct link headers.",
-    status: "ok",
-    message: `Decoupled routing destination URL generated successfully on transit network proxy node.`
-  });
-
-  // Step 3: Landing Failover Check
-  let landingDomains = db.domains.filter(d => d.type === "landing" && d.status === "healthy");
-  let finalLandingDomain = "landing-fallback.wechat-secure.com";
-  let failoverHappened = false;
-
-  const rawLandingDomains = db.domains.filter(d => d.type === "landing");
-  const primaryLanding = rawLandingDomains.length > 0 ? rawLandingDomains[0] : null;
-  
-  if (primaryLanding && primaryLanding.status === "abnormal") {
-    failoverHappened = true;
-    db.stats.failoversCount += 1;
-    
-    // Auto-failover matching Domain Pool list
-    const healthyBackup = db.domains.find(d => d.type === "landing" && d.status === "healthy");
-    if (healthyBackup) {
-      finalLandingDomain = healthyBackup.domain;
-      hopsLog.push({
-        step: "landing",
-        domain: primaryLanding.domain,
-        action: "Anti-Ban Domain Firewall: Dynamic health diagnostics failed. Outage detected!",
-        status: "failover",
-        message: `⚠️ Domain ${primaryLanding.domain} detected as BLOCKED or abnormal! Triggered auto-failover, re-routing visitor to backing pool: ${healthyBackup.domain}.`
-      });
-    } else {
-      finalLandingDomain = "landing-disaster-backup.tencent-safe.com";
-      hopsLog.push({
-        step: "landing",
-        domain: primaryLanding.domain,
-        action: "Anti-Ban Domain Firewall: Disaster Recovery mode.",
-        status: "recovery",
-        message: `⚠️ No healthy landing domains left! Redirecting to Disaster Fallback Page.`
-      });
-    }
-  } else {
-    if (landingDomains.length > 0) {
-      finalLandingDomain = landingDomains[Math.floor(Math.random() * landingDomains.length)].domain;
-    }
-    hopsLog.push({
-      step: "landing",
-      domain: finalLandingDomain,
-      action: "Landing Domain Health Verification verified [HEALTHY]. Establishing rendering payload.",
-      status: "ok",
-      message: `Seamless routing confirmed on landing-nodes.`
-    });
-  }
-
-  // Step 4: Routing Dispatch & State counters increments
-  const province = customProvince || "Guangdong";
-  const hour = customHour !== undefined ? Number(customHour) : new Date().getUTCHours() + 8;
-  const dispatchResponse = selectQRTarget(config, {
-    ip: customIp || "14.18.2.19",
-    referer: "https://mp.weixin.qq.com/s/ad",
-    province,
-    timeHour: hour
-  });
-
-  if (!dispatchResponse) {
-    return res.status(500).json({ error: "No sub QR Codes are active for this configuration!" });
-  }
-
-  // Increment counter in Redis simulator
-  const activeItemId = dispatchResponse.id;
-  const newScanCount = redis.incr(`scans:${config.id}:${activeItemId}`);
-
-  // Sync back to db persistence logic
-  const liveConfigIdx = db.configs.findIndex(c => c.id === configId);
-  let thresholdTriggered = false;
-  let switchedToNextName = "";
-
-  if (liveConfigIdx > -1) {
-    const liveItem = db.configs[liveConfigIdx].items.find(i => i.id === activeItemId);
-    if (liveItem) {
-      liveItem.currentScans = newScanCount;
-      // If group code threshold reached, we report scan switching event
-      if (config.type === "group" && newScanCount >= liveItem.maxScans) {
-        thresholdTriggered = true;
-        // See if there is a next sibling item
-        const activeGroupItems = db.configs[liveConfigIdx].items.filter(i => i.isActive);
-        const currentItemIdx = activeGroupItems.findIndex(i => i.id === activeItemId);
-        if (currentItemIdx > -1 && currentItemIdx + 1 < activeGroupItems.length) {
-          switchedToNextName = activeGroupItems[currentItemIdx + 1].name;
-        } else {
-          switchedToNextName = "No more alternate sub groups left! Repeating last fallback.";
-        }
-      }
-    }
-  }
-
-  // Log Scanned Metric
-  const logItem: any = {
-    id: "log_" + Date.now() + "_" + Math.floor(Math.random()*1000),
-    configId: config.id,
-    configTitle: config.title,
-    targetQrName: dispatchResponse.name,
-    targetQrUrl: dispatchResponse.qrcodeUrl,
-    timestamp: new Date().toISOString(),
-    ua,
-    isWechat,
-    ip,
-    location: getGeolocation(ip),
-    device: getDeviceModel(ua),
-    network: getNetworkType(ua),
-    referer: "https://mp.weixin.qq.com/s/promotions",
-    step: "landing",
-    domainUsed: finalLandingDomain,
-    stayDuration: 0,
-    isAttackBlocked: false
-  };
-
-  // Enqueue log event in High-Performance queue instead of blocking client
-  analyticsQueue.enqueue({ type: 'log', data: logItem });
-
-  db.stats.totalScans += 1;
-  if (isWechat) {
-    db.stats.wechatScans += 1;
-  } else {
-    db.stats.nonWechatScans += 1;
-  }
-
-  writeDb(db);
-  // Refresh Redis simulator configuration state cache
-  redis.refreshCache();
-
-  hopsLog.push({
-    step: "display",
-    targetQrName: dispatchResponse.name,
-    targetQrUrl: dispatchResponse.qrcodeUrl,
-    action: `Switching/Routing Logic Executed. Current Scans limit monitored. Type: [${config.type}]`,
-    status: "ok",
-    message: thresholdTriggered 
-      ? `📈 Threshold Reached (${newScanCount}/${dispatchResponse.maxScans})! Dynamic switch triggered. Next scans of '${config.title}' will route to: '${switchedToNextName}'!` 
-      : config.type === "group" 
-        ? `Scan registered successfully in cache. Sub group limits: ${newScanCount}/${dispatchResponse.maxScans} scans.`
-        : `Rotated customer support seats evenly. Node selected: '${dispatchResponse.name}' with allocation weight of ${dispatchResponse.weight}.`
-  });
-
-  return res.json({
-    success: true,
-    wechatBlocked: false,
-    targetQrName: dispatchResponse.name,
-    targetQrUrl: dispatchResponse.qrcodeUrl,
-    fgColor: dispatchResponse.fgColor,
-    bgColor: dispatchResponse.bgColor,
-    logoDataUrl: dispatchResponse.logoDataUrl,
-    cornerRadius: dispatchResponse.cornerRadius,
-    subType: dispatchResponse.subType || "wechat",
-    hops: hopsLog,
-    stats: db.stats
-  });
+  return res.status(404).json({ error: "Simulator is deactivated in production" });
 });
 
 // ==========================================
@@ -1062,7 +645,10 @@ app.get("/r/:id", (req, res) => {
   const transitDomains = db.domains.filter(d => d.type === "transit" && d.status === "healthy");
   const fallbackTransit = transitDomains.length > 0 ? transitDomains[Math.floor(Math.random() * transitDomains.length)].domain : req.get("host");
 
-  const transitTarget = `/transit/${configId}?originalHost=${fallbackTransit}&uaWechat=${isWechat}`;
+  // Retrieve the designated landing domain if selected on the config, otherwise fallback
+  const fallbackLanding = config.landingDomain || (db.domains.find(d => d.type === "landing" && d.status === "healthy")?.domain) || req.get("host");
+
+  const transitTarget = `${req.protocol}://${fallbackTransit}/transit/${configId}?landingHost=${fallbackLanding}&uaWechat=${isWechat}`;
   return res.redirect(302, transitTarget);
 });
 
@@ -1070,10 +656,10 @@ app.get("/r/:id", (req, res) => {
 app.get("/transit/:id", (req, res) => {
   const configId = req.params.id;
   const isWechat = req.query.uaWechat === "true";
-  const originalHost = req.query.originalHost || req.get("host");
+  const landingHost = req.query.landingHost || req.get("host");
 
-  // Redirect to final Landing step
-  const landingTarget = `/landing/${configId}?uaWechat=${isWechat}&originalHost=${originalHost}`;
+  // Redirect to final Landing step on the landing domain
+  const landingTarget = `${req.protocol}://${landingHost}/landing/${configId}?uaWechat=${isWechat}`;
   return res.redirect(302, landingTarget);
 });
 
@@ -1168,147 +754,213 @@ app.get("/landing/:id", (req, res) => {
   writeDb(db);
   redis.refreshCache();
 
-  const targetType = dispatchedItem.subType || "wechat";
+  // Dynamic Browser Landing Page renderer to handle real QR sweeps elegantly
+  const qrUrl = dispatchedItem.qrcodeUrl || "";
+  const isDataUri = qrUrl.startsWith("data:");
+  const isImageFile = /\.(png|jpg|jpeg|gif|webp|svg)/i.test(qrUrl.split('?')[0]);
 
-  // Redirect instantly if subType is "link" (浏览器链接)
-  if (targetType === "link") {
-    return res.redirect(302, dispatchedItem.qrcodeUrl);
-  }
-
-  let pageTitle = "加群 & 加好友说明";
-  let headerText = "微信安全进群/找客服通道";
-  let brandColor = "#07C160"; // WeChat green
-  let brandBg = "#eafaf1";
-  let badgeText = "🛡️ 微信安全防火墙实时护航";
-  let instructionsHtml = `
-    <div class="instructions-item">1. 长按二维码图片，点击选项 <span class="green" style="color:#07C160">“识别图中的二维码”</span> 即可快捷添加。</div>
-    <div class="instructions-item">2. 如遇二维码失效或异常，请在下方自助服务区域联系管理员并提供截图。</div>
-    <div class="instructions-item">3. 提示：该入口将不断进行安全分流保护，每次加载域名在腾讯安全池中轮询调配。</div>
-  `;
-  let techSupportText = "由 十夜自愈分流中继（活码引擎 v3.5 Pro）提供技术支持";
-
-  if (targetType === "qq") {
-    brandColor = "#12B7F5"; // QQ Blue
-    brandBg = "#e8f7fd";
-    headerText = "QQ群聊安全直达通道";
-    badgeText = "🛡️ QQ安全合规风控防火墙";
-    pageTitle = "QQ群 & 好友扫码说明";
-    instructionsHtml = `
-      <div class="instructions-item">1. 手机QQ内请长按二维码图片，点击选项 <span class="green" style="color:#12B7F5">“识别图中的二维码”</span> 即可快捷添加。</div>
-      <div class="instructions-item">2. 微信或其他应用访问时，请 <span class="green" style="color:#12B7F5">截图保存</span> 二维码至相册，再打开手机QQ扫描该图片。</div>
-      <div class="instructions-item">3. 系统会根据该活动分流规则自动路由可用群席位，防止群饱满拦截。</div>
-    `;
-    techSupportText = "由 十夜QQ自愈分流中继（活码引擎 v3.5 Pro）提供技术支持";
-  }
-
-  // Return elegant HTML rendering with Beacon, staying ping and defensive view-source protections
-  return res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <title>${config.title}</title>
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #ededed; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        .wrapper { width: 100%; max-width: 414px; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; }
-        .header { background-color: ${brandColor}; color: white; width: 100%; text-align: center; padding: 18px 0; font-size: 16px; font-weight: bold; letter-spacing: 0.5px; border-bottom: 1px solid rgba(0,0,0,0.1); }
-        .card { width: 90%; background: white; border-radius: 12px; margin: 20px 0; padding: 24px; box-sizing: border-box; box-shadow: 0 4px 16px rgba(0,0,0,0.06); text-align: center; }
-        .badge { display: inline-block; background-color: ${brandBg}; color: ${brandColor}; font-size: 11px; font-weight: bold; padding: 5px 12px; border-radius: 999px; margin-bottom: 14px; border: 1px solid rgba(7, 193, 96, 0.2); }
-        .title { font-size: 18px; font-weight: bold; color: #1a202c; margin-bottom: 6px; }
-        .subtitle { font-size: 13px; color: #718096; margin-bottom: 20px; }
-        .qr-frame { margin: 15px auto; padding: 10px; display: block; border-radius: 8px; max-width: 280px; background-color: #f7fafc; border: 1px solid #edf2f7; }
-        .qr-frame img { width: 100%; height: auto; max-width: 250px; display: block; margin: 0 auto; }
-        .instructions { text-align: left; background-color: #f7fafc; border-radius: 8px; padding: 16px; margin-top: 15px; border: 1px solid #edf2f7; }
-        .instructions-title { font-size: 13px; font-weight: bold; color: #2d3748; margin-bottom: 8px; display: flex; align-items: center; }
-        .instructions-title svg { margin-right: 6px; color: ${brandColor}; }
-        .instructions-item { font-size: 12px; color: #4a5568; line-height: 1.6; margin-bottom: 4px; }
-        .footer { font-size: 11px; color: #a0aec0; margin: 20px 0; text-align: center; width: 90%; }
-        .green { color: ${brandColor}; font-weight: bold; }
-      </style>
-    </head>
-    <body>
-      <div class="wrapper">
-        <div class="header">${headerText}</div>
-        <div class="card">
-          <div class="badge">${badgeText}</div>
-          <div class="title">${config.title}</div>
-          <div class="subtitle">安全通道已经创建成功，请尽快保存长按识别</div>
-          <div class="qr-frame">
-            <img src="${(dispatchedItem.qrcodeUrl.startsWith('data:') || dispatchedItem.qrcodeUrl.startsWith('/assets/')) ? dispatchedItem.qrcodeUrl : 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(dispatchedItem.qrcodeUrl)}" alt="Security QR Code" />
-          </div>
-          <div class="instructions">
-            <div class="instructions-title">
-              <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
-              ${pageTitle}
-            </div>
-            ${instructionsHtml}
-          </div>
-        </div>
-        <div class="footer">
-          ${techSupportText}<br/>
-          落地安全保护域名：<strong>${domainUsed}</strong>
-        </div>
+  if (qrUrl) {
+    if (!isDataUri && !isImageFile && qrUrl.startsWith("http")) {
+      // Direct high speed web redirection
+      return res.redirect(302, qrUrl);
+    } else {
+      // Safe WeChat responsive viewport display card (Crucial for data URI rendering capability)
+      return res.send(`
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>${config.title || '安全接入中'}</title>
+  <style>
+    :root {
+      --primary-color: #07C160;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 395px;
+      background-color: var(--card-bg);
+      border-radius: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      padding: 28px 24px;
+      text-align: center;
+      border: 1px solid rgba(226, 232, 240, 0.7);
+      position: relative;
+    }
+    .top-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background-color: rgba(7, 193, 96, 0.08);
+      color: var(--primary-color);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 50px;
+      margin-bottom: 18px;
+    }
+    .top-badge svg {
+      width: 11px;
+      height: 11px;
+      fill: currentColor;
+    }
+    .title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.4;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .qr-container {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 12px;
+      display: inline-block;
+      margin-bottom: 16px;
+    }
+    .qr-image-wrapper {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 6px;
+      border: 1px solid rgba(226, 232, 240, 0.5);
+      width: 200px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .qr-image {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 4px;
+      object-fit: contain;
+    }
+    .seat-badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #475569;
+      margin-top: 10px;
+      background: #e2e8f0;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .status-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+    .guidance {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, rgba(226, 232, 240, 0.2), rgba(226, 232, 240, 1), rgba(226, 232, 240, 0.2));
+      margin-bottom: 16px;
+    }
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-size: 10px;
+      color: #94a3b8;
+    }
+    .footer svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="top-badge">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      安全绿标通道合规核实中
+    </div>
+    
+    <div class="title">${config.title}</div>
+    <div class="subtitle">经专属隐私隧道跳转，系统已为您智能配搭当前最佳服务坐席</div>
+    
+    <div class="qr-container">
+      <div class="qr-image-wrapper">
+        <img class="qr-image" src="${qrUrl}" alt="WeChat Live Code QR Code Entry" />
       </div>
+      <div class="seat-badge">📍 分配会话：${dispatchedItem.name}</div>
+    </div>
+    
+    <div class="status-text">
+      <span>●</span> 微信高保真分流引擎执行成功
+    </div>
+    <div class="guidance">
+      请 <strong>长按上方二维码</strong> 识别加入群聊或进行添加
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="footer">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      已接入本系统分布式多重域名安全保护机制
+    </div>
+  </div>
 
-      <!-- ============================================== -->
-      <!-- 🚀 FE-PROTECTION & PERFORMANCE TELEMETRY BEACON -->
-      <!-- ============================================== -->
-      <script>
-        // 1. BEACON RETAIN TIME ENGINE: Records stay durations dynamically in seconds on unload!
-        const startTime = Date.now();
-        window.addEventListener("beforeunload", function() {
-          const duration = Math.round((Date.now() - startTime) / 1000);
-          const payload = JSON.stringify({ logId: "${logId}", duration: duration });
-          
-          if (navigator.sendBeacon) {
-            navigator.sendBeacon("/api/analytics/stay", payload);
-          } else {
-            fetch("/api/analytics/stay", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: payload,
-              keepalive: true
-            });
-          }
-        });
-
-        // 2. FRONTEND ANTI-DEBUGGING CODES & CONSOLE FREEZES: prevents right-click source viewing
-        document.addEventListener("contextmenu", function(e) {
-          e.preventDefault();
-        });
-
-        document.addEventListener("keydown", function(e) {
-          if (
-            e.keyCode === 123 || // F12 Key
-            (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || // Ctrl+Shift+I/J/C
-            (e.ctrlKey && e.keyCode === 85) // Ctrl+U: view source
-          ) {
-            e.preventDefault();
-            return false;
-          }
-        });
-
-        // Active Infinite debugger loops that halt competition inspection
-        (function() {
-          function protectModule() {
-            setInterval(function() {
-              debugger;
-            }, 100);
-          }
-          try { protectModule(); } catch (e) {}
-        })();
-
-        // Continual Console purification
-        setInterval(function() {
-          console.clear();
-          console.log("%c⚠️ 微信安全防火墙检测运行中", "color: #07C160; font-size: 20px; font-weight: bold;");
-          console.log("本页面已开启防抓包反调试机制。禁止非微信官方安全质检代码探测。");
-        }, 1000);
-      </script>
-    </body>
-    </html>
-  `);
+  <script>
+    const logId = "${logId}";
+    let stayDuration = 0;
+    
+    setInterval(() => {
+      stayDuration += 2;
+      fetch("/api/analytics/stay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logId, duration: stayDuration })
+      }).catch(err => {});
+    }, 2000);
+  </script>
+</body>
+</html>
+      `);
+    }
+  } else {
+    return res.status(404).send("<h2 style='text-align:center;font-family:sans-serif;'>Error: Target URL configuration is empty.</h2>");
+  }
 });
 
 // Stay retention endpoint
@@ -1410,6 +1062,13 @@ app.put("/api/admin/configs/:id", authAdmin, (req, res) => {
   }
 
   const updatedConfig: DynamicQRConfig = req.body;
+
+  // Verify that if they modified the ID, it does not collide with another campaign
+  if (updatedConfig.id !== targetId) {
+    if (db.configs.some(c => c.id === updatedConfig.id)) {
+      return res.status(400).json({ error: "修改后的唯一推广路由定位标志已被其他活动占用，请换用不同的标志。" });
+    }
+  }
   
   // Keep original create date
   updatedConfig.createdAt = db.configs[configIdx].createdAt;

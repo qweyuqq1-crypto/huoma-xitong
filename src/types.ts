@@ -43,6 +43,8 @@ export interface DynamicQRConfig {
   forceWechatBrowser: boolean; // Filter out non-WeChat browser queries
   isActive: boolean;
   createdAt: string;
+  entranceDomain?: string;  // Selected Entrance Domain
+  landingDomain?: string;   // Selected Landing Domain
 }
 
 export type DomainType = 'entrance' | 'transit' | 'landing';

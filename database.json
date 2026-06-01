@@ -1,0 +1,61 @@
+{
+  "configs": [],
+  "domains": [
+    {
+      "id": "ent1",
+      "domain": "entrance.livecode.wechat.cn",
+      "type": "entrance",
+      "status": "healthy",
+      "failCount": 0
+    },
+    {
+      "id": "ent2",
+      "domain": "qr.marketing-core.net",
+      "type": "entrance",
+      "status": "healthy",
+      "failCount": 0
+    },
+    {
+      "id": "trans1",
+      "domain": "transit-gate1.alicdn-safe.com",
+      "type": "transit",
+      "status": "healthy",
+      "failCount": 0
+    },
+    {
+      "id": "trans2",
+      "domain": "transit-gate2.alicdn-safe.com",
+      "type": "transit",
+      "status": "healthy",
+      "failCount": 0
+    },
+    {
+      "id": "land1",
+      "domain": "landing-page-a19.tencent-safe.com",
+      "type": "landing",
+      "status": "healthy",
+      "failCount": 0
+    },
+    {
+      "id": "land2",
+      "domain": "landing-page-b72.tencent-safe.com",
+      "type": "landing",
+      "status": "healthy",
+      "failCount": 0
+    },
+    {
+      "id": "land3",
+      "domain": "landing-page-c08.tencent-safe.com",
+      "type": "landing",
+      "status": "healthy",
+      "failCount": 0
+    }
+  ],
+  "logs": [],
+  "stats": {
+    "totalScans": 0,
+    "wechatScans": 0,
+    "nonWechatScans": 0,
+    "failoversCount": 0
+  }
+}
